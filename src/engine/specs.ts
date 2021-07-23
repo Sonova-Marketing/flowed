@@ -16,6 +16,8 @@ export class TaskSpecMap {
 export interface TaskSpec {
   requires?: string[];
 
+  callbacks?: string[];
+
   provides?: string[];
 
   defaultResult?: AnyValue;

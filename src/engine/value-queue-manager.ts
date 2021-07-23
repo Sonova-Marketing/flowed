@@ -41,9 +41,13 @@ export class ValueQueueManager {
     }, {});
   }
 
-  public push(queueName: string, value: AnyValue): void {
+  public push(queueName: string, value: AnyValue, createQueue = false): void {
     if (!this.queueNames.includes(queueName)) {
-      throw new Error(`Queue name ${queueName} does not exist in queue manager. Existing queues are: [${this.queueNames.join(', ')}].`);
+      if (!createQueue) {
+        throw new Error(`Queue name ${queueName} does not exist in queue manager. Existing queues are: [${this.queueNames.join(', ')}].`);
+      }
+      this.queueNames.push(queueName);
+      this.queues[queueName] = [];
     }
 
     this.nonEmptyQueues.add(queueName);

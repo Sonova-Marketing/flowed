@@ -120,7 +120,7 @@ export class FlowRunStatus {
         this.tasksReady.push(task);
       }
 
-      const taskReqs = task.spec.requires ?? [];
+      const taskReqs = [...(task.spec.requires || []), ...(task.spec.callbacks || [])];
       for (const req of taskReqs) {
         if (typeof this.tasksByReq[req] === 'undefined') {
           this.tasksByReq[req] = {};
@@ -159,11 +159,14 @@ export class FlowRunStatus {
     for (const [taskCode, taskStatus] of Object.entries(runState.taskStatuses)) {
       this.tasks[taskCode].setSerializableState(taskStatus);
     }
+    this.state = this.states[runState.state];
+    this.runOptions = runState.runOptions;
   }
 
   public toSerializable(): SerializedFlowRunStatus {
     const serialized: SerializedFlowRunStatus = {
       id: this.id,
+      state: this.state.getStateCode(),
       nextProcessId: this.processManager.nextProcessId,
       tasksReady: this.tasksReady.map(task => task.code),
       tasksByReq: {},
@@ -172,6 +175,7 @@ export class FlowRunStatus {
       results: JSON.parse(JSON.stringify(this.results)),
       context: {},
       options: JSON.parse(JSON.stringify(this.options)),
+      runOptions: this.runOptions,
       taskStatuses: {},
     };
 
@@ -194,6 +198,7 @@ export class FlowRunStatus {
 export interface SerializedFlowRunStatus {
   id: number;
   nextProcessId: number;
+  state: string;
   tasksReady: string[];
   tasksByReq: { [req: string]: string[] };
   taskProvisions: string[];
@@ -201,5 +206,6 @@ export interface SerializedFlowRunStatus {
   options: FlowOptions;
   results: ValueMap; // Must be serializable
   context: ValueMap; // Must be serializable
+  runOptions: ValueMap;
   taskStatuses: { [taskCode: string]: TaskRunStatus }; // Must be serializable
 }

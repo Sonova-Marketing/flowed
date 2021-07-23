@@ -116,6 +116,107 @@ describe('the flow', () => {
     return successPromise;
   });
 
+  it('never ending task can be paused and resumed', async () => {
+    const spec = {
+      tasks: {
+        task1: {
+          requires: ['initialStr', 'text1'],
+          provides: ['result1'],
+          resolver: {
+            name: 'append',
+            params: { text1: 'initialStr', text2: 'text1' },
+            results: { result: 'result1' },
+          },
+        },
+        neverEnding: {
+          requires: ['result1', 'text2'],
+          provides: ['result2'],
+          callbacks: ['callback_1'],
+          resolver: {
+            name: 'never-ending',
+            params: { text1: 'result1', text2: 'text2', result: 'callback_1' },
+            results: { result: 'result2' },
+          },
+        },
+        task3: {
+          requires: ['result2', 'text3'],
+          provides: ['result3'],
+          resolver: {
+            name: 'append',
+            params: { text1: 'result2', text2: 'text3' },
+            results: { result: 'result3' },
+          },
+        },
+        task4: {
+          requires: ['result3', 'text4'],
+          provides: ['finalStr'],
+          resolver: {
+            name: 'append',
+            params: { text1: 'result3', text2: 'text4' },
+            results: { result: 'finalStr' },
+          },
+        },
+      },
+    };
+    const flow = new Flow(spec);
+
+    class AppendString {
+      public async exec(params: ValueMap, context: ValueMap, task: Task): Promise<ValueMap> {
+        debug(`Starting to execute task ${task.code}`);
+        return new Promise<ValueMap>(resolve => {
+          setTimeout(() => {
+            resolve({
+              result: params.text1 + params.text2,
+            });
+          }, 10);
+        });
+      }
+    }
+
+    class NeverEnding {
+      public async exec(params: ValueMap, context: ValueMap, task: Task): Promise<ValueMap> {
+        debug(`Starting to execute task ${task.code}`);
+        return new Promise<ValueMap>((resolve, reject) => {
+          if (params.result) {
+            resolve({
+              result: params.text1 + params.text2 + params.result,
+            });
+            return;
+          }
+          resolve({ promise: context.$flowed.flow.pause(new Error('$blocked')), $blocked: true });
+        });
+      }
+    }
+
+    await flow.start(
+      {
+        initialStr: '',
+        text1,
+        text2,
+        text3,
+        text4,
+      },
+      ['result1', 'result2', 'result3', 'finalStr', 'callback_1'],
+      {
+        append: AppendString,
+        'never-ending': NeverEnding
+      },
+    );
+
+    expect(flow.getStateCode()).to.equal('Paused');
+    const state = flow.getSerializableState();
+    const restored = new Flow(spec, state, {
+      append: AppendString,
+      'never-ending': NeverEnding
+    });
+    await restored.resume();
+    expect(restored.getStateCode()).to.equal('Paused');
+    restored.supplyResult('callback_1', 'test');
+    const results = await restored.resume();
+    expect(results.finalStr).to.equal('(text1)(text2)test(text3)(text4)');
+    expect(restored.getStateCode()).to.equal('Finished');
+  });
+
   it('can be paused with error', async () => {
     const flow = new Flow(flowSpec);
 

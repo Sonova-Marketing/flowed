@@ -12,7 +12,16 @@ import {
   ThrowErrorResolver,
   WaitResolver,
 } from '../../resolver-library';
-import { AnyValue, FlowedLogEntry, FlowStateEnum, FlowTransitionEnum, TaskResolverClass, TaskResolverMap, ValueMap } from '../../types';
+import {
+  AnyValue,
+  FlowedLogEntry,
+  FlowStateEnum,
+  FlowTransitionEnum,
+  TaskResolverClass,
+  TaskResolverMap,
+  TaskRunStatus,
+  ValueMap,
+} from '../../types';
 import { FlowRunStatus, SerializedFlowRunStatus } from '../flow-run-status';
 import { Task } from '../task';
 import { TaskProcess } from '../task-process';
@@ -121,7 +130,10 @@ export abstract class FlowState implements IFlow {
   }
 
   public setResolvers(resolvers: TaskResolverMap): void {
-    this.runStatus.resolvers = resolvers;
+    this.runStatus.resolvers = {
+      ...this.runStatus.resolvers,
+      ...resolvers
+    };
   }
 
   public setContext(context: ValueMap): void {
@@ -230,7 +242,7 @@ export abstract class FlowState implements IFlow {
 
         // @todo Possible optimization: supply all results first, then check ready tasks
         // @todo This 'if' could actually be a 'while', in case more than one instance of the same task get ready
-        if (suppliedTask.isReadyToRun()) {
+        if (suppliedTask.isReadyToRun() && !this.runStatus.tasksReady.includes(suppliedTask)) {
           this.runStatus.tasksReady.push(suppliedTask);
         }
       }
@@ -299,8 +311,28 @@ export abstract class FlowState implements IFlow {
 
   protected processFinished(process: TaskProcess, error: Error | boolean, stopFlowExecutionOnError: boolean): void {
     this.runStatus.processManager.removeProcess(process);
-
     const task = process.task;
+    if (typeof error !== 'boolean' && error.message === '$blocked') {
+      const state = task.getSerializableState() as unknown as TaskRunStatus;
+      task.setSerializableState(state);
+      const params = process.getParams();
+      const results = this.runStatus.results;
+      task.spec.requires?.forEach((reqName) => {
+        const value = results[reqName] || params[reqName];
+        if (value !== undefined) {
+          task.supplyReq(reqName, value);
+        }
+      });
+      task.spec.callbacks?.forEach((reqName) => {
+        const value = results[reqName];
+        if (value !== undefined) {
+          task.supplyReq(reqName, value);
+        }
+      });
+      this.runStatus.tasksReady.push(task);
+      return this.runStatus.state.postProcessFinished(false, stopFlowExecutionOnError);
+    }
+
     const taskCode = task.code;
     const taskSpec = task.spec;
     const taskProvisions = taskSpec.provides ?? [];
@@ -347,7 +379,8 @@ export abstract class FlowState implements IFlow {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected postProcessFinished(error: Error | boolean, stopFlowExecutionOnError: boolean): void {}
+  protected postProcessFinished(error: Error | boolean, stopFlowExecutionOnError: boolean): void {
+  }
 
   protected createTransitionError(transition: string): Error {
     return new Error(`Cannot execute transition ${transition} in current state ${this.getStateCode()}.`);
@@ -377,7 +410,15 @@ export abstract class FlowState implements IFlow {
   }
 
   public static createLogEntry(
-    { n, m, mp, l, e, pid, task }: { n?: number; m: string; mp?: object; l?: string; e?: string; pid?: number; task?: any },
+    {
+      n,
+      m,
+      mp,
+      l,
+      e,
+      pid,
+      task,
+    }: { n?: number; m: string; mp?: object; l?: string; e?: string; pid?: number; task?: any },
     flowStatus: FlowRunStatus | undefined,
   ) {
     const formatLevel = (level: string | undefined) => {
@@ -449,7 +490,15 @@ export abstract class FlowState implements IFlow {
     return auditLogEntry;
   }
 
-  public log({ n, m, mp, l, e, pid, task }: { n?: number; m: string; mp?: object; l?: string; e?: string; pid?: number; task?: any }): void {
+  public log({
+               n,
+               m,
+               mp,
+               l,
+               e,
+               pid,
+               task,
+             }: { n?: number; m: string; mp?: object; l?: string; e?: string; pid?: number; task?: any }): void {
     this.debug(FlowState.formatDebugMessage({ n, m, mp, l, e }), [mp]);
     FlowManager.log(FlowState.createLogEntry({ n, m, mp, l, e, pid, task }, this.runStatus));
   }

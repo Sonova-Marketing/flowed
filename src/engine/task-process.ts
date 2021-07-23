@@ -39,6 +39,9 @@ export class TaskProcess {
 
     return new Promise((resolve, reject) => {
       const onResolverSuccess = (resolverValue: ValueMap): void => {
+        if (resolverValue && typeof resolverValue === 'object' && resolverValue.$blocked) {
+          return reject(new Error('$blocked'));
+        }
         const results = this.task.mapResultsFromResolver(resolverValue, this.automapResults, this.flowId, this.debug, this.log);
         this.task.runStatus.solvedResults = results;
         resolve(this.task.runStatus.solvedResults);

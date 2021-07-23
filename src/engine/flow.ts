@@ -9,8 +9,14 @@ import { FlowState } from './flow-state';
 export class Flow implements IFlow {
   protected runStatus!: FlowRunStatus;
 
-  public constructor(spec?: FlowSpec, runState?: SerializedFlowRunStatus) {
+  public constructor(spec?: FlowSpec, runState?: SerializedFlowRunStatus, resolvers?: TaskResolverMap, context?: ValueMap) {
     this.runStatus = new FlowRunStatus(this, spec ?? {}, runState);
+    if (resolvers) {
+      this.runStatus.state.setResolvers(resolvers);
+    }
+    if (context || runState) {
+      this.runStatus.state.setContext(context || {});
+    }
   }
 
   public getStateCode(): FlowStateEnum {
@@ -33,6 +39,10 @@ export class Flow implements IFlow {
 
   public resume(): Promise<ValueMap> {
     return this.runStatus.state.resume();
+  }
+
+  public supplyResult(resultName: string, result: AnyValue): void {
+    this.runStatus.state.supplyResult(resultName, result);
   }
 
   public stop(): Promise<ValueMap> {

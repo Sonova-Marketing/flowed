@@ -47,13 +47,15 @@ export class Task {
   }
 
   public supplyReq(reqName: string, value: AnyValue): void {
+    const callbackParameter = (this.spec.callbacks ?? []).indexOf(reqName) !== -1;
+
     const reqIndex = (this.spec.requires ?? []).indexOf(reqName);
-    if (reqIndex === -1) {
+    if (reqIndex === -1 && !callbackParameter) {
       // This can only happen if supplyReq is called manually by the user. The flow will never call with an invalid reqName.
       throw new Error(`Requirement '${reqName}' for task '${this.code}' is not valid.`);
     }
 
-    this.runStatus.solvedReqs.push(reqName, value);
+    this.runStatus.solvedReqs.push(reqName, value, callbackParameter);
   }
 
   public supplyReqs(reqsMap: ValueMap): void {
