@@ -1,6 +1,6 @@
 {
   "name": "@sonova-marketing/flowed",
-  "version": "1.14.0",
+  "version": "1.14.2",
   "description": "A fast and reliable flow engine for orchestration and more uses in *Node.js*, *Deno* and the browser",
   "keywords": [
     "flow",
@@ -59,7 +59,7 @@
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.1",
     "@types/chai": "^4.2.21",
-    "@types/debug": "^4.1.6",
+    "@types/debug": "^4.1.7",
     "@types/mocha": "^8.2.3",
     "@types/node": "^16.3.1",
     "@typescript-eslint/eslint-plugin": "^4.28.2",
