@@ -29,6 +29,10 @@ export class FlowRunStatus {
     [req: string]: TaskMap;
   } = {};
 
+  public hasResults: {
+    [req: string]: boolean;
+  } = {};
+
   public taskProvisions!: string[];
 
   public resolvers: TaskResolverMap = {};

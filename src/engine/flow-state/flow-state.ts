@@ -230,6 +230,7 @@ export abstract class FlowState implements IFlow {
   public supplyResult(resultName: string, result: AnyValue): void {
     // Checks if the task result is required by other tasks.
     // If it is not, it is likely a flow output value.
+    this.runStatus.hasResults[resultName] = result !== undefined && result !== null;
     const suppliesSomeTask = typeof this.runStatus.tasksByReq[resultName] !== 'undefined';
 
     if (suppliesSomeTask) {
@@ -264,6 +265,10 @@ export abstract class FlowState implements IFlow {
     this.runStatus.tasksReady = [];
 
     for (const task of readyTasks) {
+      const hasResults = task.spec.provides?.every((resultName) => this.runStatus.hasResults[resultName]);
+      if (hasResults) {
+        continue;
+      }
       const taskResolver = this.runStatus.state.getResolverForTask(task);
 
       const process = this.runStatus.processManager.createProcess(
