@@ -164,7 +164,6 @@ export class FlowRunStatus {
       this.tasks[taskCode].setSerializableState(taskStatus);
     }
     this.state = this.states[runState.state];
-    this.runOptions = runState.runOptions;
   }
 
   public toSerializable(): SerializedFlowRunStatus {
@@ -179,12 +178,15 @@ export class FlowRunStatus {
       results: JSON.parse(JSON.stringify(this.results)),
       context: {},
       options: JSON.parse(JSON.stringify(this.options)),
-      runOptions: this.runOptions,
       taskStatuses: {},
     };
 
-    const serializableContext = Object.assign({}, this.context);
-    delete serializableContext.$flowed;
+    const serializableContext = Object.entries(this.context).reduce((ctx, [key, val]) => {
+      if (key[0] !== '$') {
+        ctx[key] = val;
+      }
+      return ctx;
+    }, {} as any);
     serialized.context = JSON.parse(JSON.stringify(serializableContext));
 
     for (const [req, taskMap] of Object.entries(this.tasksByReq)) {
@@ -210,6 +212,5 @@ export interface SerializedFlowRunStatus {
   options: FlowOptions;
   results: ValueMap; // Must be serializable
   context: ValueMap; // Must be serializable
-  runOptions: ValueMap;
   taskStatuses: { [taskCode: string]: TaskRunStatus }; // Must be serializable
 }
