@@ -344,6 +344,13 @@ export abstract class FlowState implements IFlow {
     const taskResults = task.getResults();
     const hasDefaultResult = Object.prototype.hasOwnProperty.call(taskSpec, 'defaultResult');
 
+    if (error instanceof Error) {
+      (error as any).task = {
+        code: taskCode,
+        results: taskResults,
+      };
+    }
+
     if (error) {
       this.log({
         n: this.runStatus.id,

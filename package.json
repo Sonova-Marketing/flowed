@@ -1,6 +1,6 @@
 {
   "name": "@sonova-marketing/flowed",
-  "version": "1.15.2",
+  "version": "1.15.3",
   "description": "A fast and reliable flow engine for orchestration and more uses in *Node.js*, *Deno* and the browser",
   "keywords": [
     "flow",
